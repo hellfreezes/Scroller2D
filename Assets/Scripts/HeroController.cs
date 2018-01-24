@@ -24,47 +24,53 @@ public class HeroController : MonoBehaviour {
     private Rigidbody2D heroRigidbody;
     private Animator heroAnimator;
 
-	// Use this for initialization
-	private void Start () {
+    // Use this for initialization
+    private void Start() {
         facingRight = true;
         heroRigidbody = GetComponent<Rigidbody2D>();
         heroAnimator = GetComponent<Animator>();
-	}
-    
+    }
+
     private void Update()
     {
         HandleInput();
     }
 
-    private void FixedUpdate () {
+    private void FixedUpdate() {
         float horizontal = Input.GetAxis("Horizontal");
         isGrounded = IsGrounded();
 
         HandleMove(horizontal);
         Flip(horizontal);
         HandleAttacks();
+        HandleLayers();
         ResetValues();
-	}
+    }
 
     private void HandleMove(float horizontal)
     {
+        if (heroRigidbody.velocity.y < 0) //герой падает
+        {
+            heroAnimator.SetBool("land", true);
+        }
         if (!this.heroAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack") && (isGrounded || airControl))
         {
             heroRigidbody.velocity = new Vector2(horizontal * movementSpeed, heroRigidbody.velocity.y);
         }
 
-        if (isGrounded && jump)
+        if (isGrounded && jump) //Были на земле и выполнен запрос на прыжок
         {
             isGrounded = false;
             heroRigidbody.AddForce(new Vector2(0, jumpForce));
+            heroAnimator.SetTrigger("jump");
         }
-        
+
         heroAnimator.SetFloat("speed", Mathf.Abs(horizontal));
     }
 
     private void HandleAttacks()
     {
-        if (attack && !this.heroAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
+        if (attack && isGrounded && !this.heroAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
         {
             heroAnimator.SetTrigger("attack");
             heroRigidbody.velocity = Vector2.zero;
@@ -112,11 +118,25 @@ public class HeroController : MonoBehaviour {
                 {
                     if (colliders[i].gameObject != gameObject)
                     {
+                        heroAnimator.ResetTrigger("jump");
+                        heroAnimator.SetBool("land", false);
                         return true;
                     }
                 }
             }
         }
         return false;
+    }
+
+    //Смена слоев анимации
+    private void HandleLayers()
+    {
+        if (!isGrounded) //Если мы не на земле
+        {
+            heroAnimator.SetLayerWeight(1, 1); //1 = AirLayer
+        } else
+        {
+            heroAnimator.SetLayerWeight(1, 0);
+        }
     }
 }
