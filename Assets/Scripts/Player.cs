@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HeroController : MonoBehaviour {
+public class Player : MonoBehaviour {
     [SerializeField]
     private float movementSpeed = 1.0f;
     [SerializeField]
@@ -16,18 +16,34 @@ public class HeroController : MonoBehaviour {
     [SerializeField]
     private bool airControl;
 
-    private bool isGrounded;
     private bool facingRight;
-    private bool attack;
-    private bool jump;
-
-    private Rigidbody2D heroRigidbody;
     private Animator heroAnimator;
+    private static Player instance;
+
+    public static Player Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = GameObject.FindObjectOfType<Player>();
+            }
+            return instance;
+        }
+    }
+
+
+    public Rigidbody2D HeroRigidbody { get; set; }
+    public bool Attack { get; set; }
+    public bool Jump { get; set; }
+    public bool OnGround { get; set; }
+
+    
 
     // Use this for initialization
     private void Start() {
         facingRight = true;
-        heroRigidbody = GetComponent<Rigidbody2D>();
+        HeroRigidbody = GetComponent<Rigidbody2D>();
         heroAnimator = GetComponent<Animator>();
     }
 
@@ -38,54 +54,41 @@ public class HeroController : MonoBehaviour {
 
     private void FixedUpdate() {
         float horizontal = Input.GetAxis("Horizontal");
-        isGrounded = IsGrounded();
+        OnGround = IsGrounded();
 
         HandleMove(horizontal);
         Flip(horizontal);
-        HandleAttacks();
         HandleLayers();
-        ResetValues();
     }
 
     private void HandleMove(float horizontal)
     {
-        if (heroRigidbody.velocity.y < 0) //герой падает
+        if (HeroRigidbody.velocity.y < 0) //герой падает
         {
             heroAnimator.SetBool("land", true);
         }
-        if (!this.heroAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack") && (isGrounded || airControl))
+        if (!Attack && (OnGround || airControl))
         {
-            heroRigidbody.velocity = new Vector2(horizontal * movementSpeed, heroRigidbody.velocity.y);
+            HeroRigidbody.velocity = new Vector2(horizontal * movementSpeed, HeroRigidbody.velocity.y);
         }
 
-        if (isGrounded && jump) //Были на земле и выполнен запрос на прыжок
+        if (HeroRigidbody.velocity.y == 0 && Jump) //Были на земле и выполнен запрос на прыжок
         {
-            isGrounded = false;
-            heroRigidbody.AddForce(new Vector2(0, jumpForce));
-            heroAnimator.SetTrigger("jump");
+            HeroRigidbody.AddForce(new Vector2(0, jumpForce));
         }
 
         heroAnimator.SetFloat("speed", Mathf.Abs(horizontal));
-    }
-
-    private void HandleAttacks()
-    {
-        if (attack && isGrounded && !this.heroAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
-        {
-            heroAnimator.SetTrigger("attack");
-            heroRigidbody.velocity = Vector2.zero;
-        }
     }
 
     private void HandleInput()
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            jump = true;
+            heroAnimator.SetTrigger("jump");
         }
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
-            attack = true;
+            heroAnimator.SetTrigger("attack");
         }
     }
 
@@ -101,15 +104,9 @@ public class HeroController : MonoBehaviour {
         }
     }
 
-    private void ResetValues()
-    {
-        attack = false;
-        jump = false;
-    }
-
     private bool IsGrounded()
     {
-        if (heroRigidbody.velocity.y <= 0)
+        if (HeroRigidbody.velocity.y <= 0)
         {
             foreach (Transform point in groundPoints)
             {
@@ -118,8 +115,6 @@ public class HeroController : MonoBehaviour {
                 {
                     if (colliders[i].gameObject != gameObject)
                     {
-                        heroAnimator.ResetTrigger("jump");
-                        heroAnimator.SetBool("land", false);
                         return true;
                     }
                 }
@@ -131,7 +126,7 @@ public class HeroController : MonoBehaviour {
     //Смена слоев анимации
     private void HandleLayers()
     {
-        if (!isGrounded) //Если мы не на земле
+        if (!OnGround) //Если мы не на земле
         {
             heroAnimator.SetLayerWeight(1, 1); //1 = AirLayer
         } else

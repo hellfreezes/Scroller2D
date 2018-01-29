@@ -32,7 +32,7 @@ public class CollisonTriger : MonoBehaviour {
 
     private void OnTriggerExit2D(Collider2D collision)
     {
-        if (collision.gameObject.name == "Player")
+         if (collision.gameObject.name == "Player")
         {
             Physics2D.IgnoreCollision(platformCollider, playerCollider, false);
         }
